@@ -1,0 +1,17 @@
+# Master path for input data **Update to the path where you downloaded the folder**
+master_path: "C:\\Users\\sbakar\\OneDrive - Research Triangle Institute\\IKI Peru Project - General\\Externo\\PACA_Peru"
+
+# Input group databases (Grupos_Modelacion)
+modeling_groups:
+  Grupo_1: "Modelacion\\Grupos_Modelacion\\Grupo_1\\BD\\BD_Grupo_1.sqlite"
+  Grupo_2: "Modelacion\\Grupos_Modelacion\\Grupo_2\\BD\\BD_Grupo_2.sqlite"
+  Grupo_3: "Modelacion\\Grupos_Modelacion\\Grupo_3\\BD\\BD_Grupo_3.sqlite"
+  Grupo_4: "Modelacion\\Grupos_Modelacion\\Grupo_4\\BD\\BD_Grupo_4.sqlite"
+  Grupo_5: "Modelacion\\Grupos_Modelacion\\Grupo_5\\BD\\BD_Grupo_5.sqlite"
+  Grupo_6: "Modelacion\\Grupos_Modelacion\\Grupo_6\\BD\\BD_Grupo_6.sqlite"
+  Grupo_7: "Modelacion\\Grupos_Modelacion\\Grupo_7\\BD\\BD_Grupo_7.sqlite"
+  Grupo_8: "Modelacion\\Grupos_Modelacion\\Grupo_8\\BD\\BD_Grupo_8.sqlite"
+  Grupo_9: "Modelacion\\Grupos_Modelacion\\Grupo_9\\BD\\BD_Grupo_9.sqlite"
+  Grupo_10: "Modelacion\\Grupos_Modelacion\\Grupo_10\\BD\\BD_Grupo_10.sqlite"
+  Grupo_11: "Modelacion\\Grupos_Modelacion\\Grupo_11\\BD\\BD_Grupo_11.sqlite"
+  Grupo_12: "Modelacion\\Grupos_Modelacion\\Grupo_12\\BD\\BD_Grupo_12.sqlite"
