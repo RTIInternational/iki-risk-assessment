@@ -1,5 +1,5 @@
 # Master path for input data **Update to the path where you downloaded the folder**
-master_path: "C:\\Users\\sbakar\\OneDrive - Research Triangle Institute\\IKI Peru Project - General\\Externo\\PACA_Peru"
+master_path: "C:\\Users\\nreynolds\\Research Triangle Institute\\IKI Peru Project - General\\Externo\\PACA_Peru"
 
 # Input group databases (Grupos_Modelacion)
 modeling_groups:
