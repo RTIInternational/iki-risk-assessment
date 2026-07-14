@@ -24,7 +24,9 @@ from data_access import (
 )
 from plots import (
     build_basin_summary_pane,
+    build_category_transition_summary,
     build_percent_change_map,
+    build_risk_category_map,
     build_risk_map,
     build_selected_comid_table,
 )
@@ -302,15 +304,38 @@ def main():
             pct_col="Riesgo_PctChange",
             title="Percent Change from Baseline",
         )
+        baseline_cat_map = build_risk_category_map(
+            basin_gdf=basin_gdf,
+            scores_df=baseline_scores,
+            selected_comids=selected_comids,
+            risk_col="Riesgo",
+            title="Baseline Risk Categories",
+        )
+        perturbed_cat_map = build_risk_category_map(
+            basin_gdf=basin_gdf,
+            scores_df=perturbed_scores,
+            selected_comids=selected_comids,
+            risk_col="Riesgo",
+            title="Perturbed Risk Categories",
+        )
 
         summary_pane = build_basin_summary_pane(basin_summary)
         comid_table = build_selected_comid_table(comid_change, selected_comids)
+        category_summary = build_category_transition_summary(
+            baseline_scores=baseline_scores,
+            perturbed_scores=perturbed_scores,
+            risk_col="Riesgo",
+        )
 
         return pn.Column(
+            pn.pane.Markdown("### Absolute Risk Views"),
             pn.Row(risk_map, pct_map, sizing_mode="stretch_width"),
             pn.Row(summary_pane, sizing_mode="stretch_width"),
             pn.pane.Markdown("### Selected COMID Summary"),
             comid_table,
+            pn.pane.Markdown("### Category Views"),
+            pn.Row(baseline_cat_map, perturbed_cat_map, sizing_mode="stretch_width"),
+            pn.Row(category_summary, sizing_mode="stretch_width"),
             sizing_mode="stretch_both",
         )
 
