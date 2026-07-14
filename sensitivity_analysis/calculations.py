@@ -8,29 +8,26 @@ def min_max_normalize(df: pd.DataFrame) -> pd.DataFrame:
 
 	Adds/overwrites column ValueNorm.
 	"""
+	vals = pd.to_numeric(df["Value"], errors="coerce")
+	ind_min = pd.to_numeric(df["IndMin"], errors="coerce")
+	ind_max = pd.to_numeric(df["IndMax"], errors="coerce")
 
-	def scale(row: pd.Series) -> float:
-		value = row.get("Value")
-		ind_min = row.get("IndMin")
-		ind_max = row.get("IndMax")
+	denom = ind_max - ind_min
+	norm = (vals - ind_min) / denom
+	norm = norm.clip(0, 1)
 
-		if pd.isna(value):
-			return np.nan
+	# If min=max, return 0.0 for non-null values (matches prior behavior).
+	zero_denom_mask = denom == 0
+	norm = norm.mask(zero_denom_mask & vals.notna(), 0.0)
 
-		denom = ind_max - ind_min
-		if denom == 0:
-			return 0.0
+	# Preserve NaN when source value is missing.
+	norm = norm.where(vals.notna(), np.nan)
 
-		norm = (value - ind_min) / denom
-		norm = np.clip(norm, 0, 1)
+	order = df["IndOrder"].fillna("ASC").astype(str).str.strip().str.upper()
+	desc_mask = order == "DESC"
+	norm = np.where(desc_mask, 1 - norm, norm)
 
-		order_val = str(row.get("IndOrder", "ASC")).strip().upper()
-		if order_val == "DESC":
-			norm = 1 - norm
-
-		return float(norm)
-
-	df["ValueNorm"] = df.apply(scale, axis=1)
+	df["ValueNorm"] = pd.Series(norm, index=df.index, dtype="float64")
 	return df
 
 

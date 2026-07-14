@@ -115,6 +115,24 @@ def get_wateralloc_indicators(conn: sqlite3.Connection) -> pd.DataFrame:
     return pd.read_sql_query(query, conn)
 
 
+def get_wateralloc_values_for_scenario(
+    conn: sqlite3.Connection,
+    wascn_id: int,
+) -> pd.DataFrame:
+    """Load COMID/TextID/value rows from WaterALLOC for one scenario."""
+    query = """
+    SELECT
+        wa.COMID,
+        i.TextID,
+        i.Name,
+        wa.Value
+    FROM IndValues_WaALLOC wa
+    JOIN Indicators i ON wa.IndID = i.IndID
+    WHERE wa.WaScnID = ?
+    """
+    return pd.read_sql_query(query, conn, params=(wascn_id,))
+
+
 def get_indicator_data_for_ic_scenario(
     conn: sqlite3.Connection,
     wascn_id: int,
@@ -165,7 +183,7 @@ def get_indicator_data_for_ic_scenario(
         av.COMID,
         av.Value,
         iw.Factor,
-        iw.TextID,
+        ind.TextID,
         iw.WeightValue,
         ind.Min AS IndMin,
         ind.Max AS IndMax,
