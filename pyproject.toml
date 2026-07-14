@@ -1,0 +1,22 @@
+[project]
+name = "iki-risk-assessment"
+version = "0.1.0"
+description = "Environment for IKI risk assessment notebooks"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "numpy",
+    "pandas",
+    "geopandas",
+    "pyogrio",
+    "matplotlib",
+    "bokeh",
+    "holoviews",
+    "panel",
+    "pyyaml",
+    "jupyterlab",
+    "ipykernel",
+]
+
+[tool.uv]
+package = false
