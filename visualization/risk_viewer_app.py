@@ -20,7 +20,7 @@ from data_access import (  # noqa: E402
     list_basins,
     load_shapefile,
 )
-from plots import build_risk_category_map, build_risk_map  # noqa: E402
+from plots import build_risk_category_map  # noqa: E402
 
 pn.extension("tabulator")
 
@@ -40,8 +40,40 @@ def _ic_label(row) -> str:
     return f"{int(row['IcID'])}: {row['ImpactChain']}"
 
 
-def _scenario_label(row) -> str:
-    return f"{int(row['WaScnID'])}: {row['WaScnName']}"
+def _normalize_scenario_name(name: str) -> str:
+    return " ".join(str(name).strip().lower().replace("_", " ").replace("-", " ").split())
+
+
+def _resolve_fixed_scenarios(scenarios_df: pd.DataFrame):
+    """Resolve scenario IDs for the three fixed maps shown in the viewer."""
+    desired = [
+        ("Base", ["base", "baseline"]),
+        ("CMIP6 85 2050", ["cmip6 85 2050", "rcp85 2050", "ssp585 2050"]),
+        ("CMIP6 45 2050", ["cmip6 45 2050", "rcp45 2050", "ssp245 2050"]),
+    ]
+
+    normalized_rows = [
+        (_normalize_scenario_name(row["WaScnName"]), int(row["WaScnID"]))
+        for _, row in scenarios_df.iterrows()
+    ]
+
+    resolved = []
+    missing = []
+    for label, aliases in desired:
+        scenario_id = None
+        for alias in aliases:
+            for normalized_name, candidate_id in normalized_rows:
+                if normalized_name == alias or alias in normalized_name:
+                    scenario_id = candidate_id
+                    break
+            if scenario_id is not None:
+                break
+        if scenario_id is None:
+            missing.append(label)
+        else:
+            resolved.append((label, scenario_id))
+
+    return resolved, missing
 
 
 def _to_web_mercator(gdf):
@@ -91,23 +123,15 @@ def main():
     finally:
         conn.close()
 
+    fixed_scenarios, missing_scenarios = _resolve_fixed_scenarios(scenarios_df)
+
     basin_options = list_basins(full_gdf)
     default_basin = basin_options[0] if basin_options else None
-
-    scenario_options = {
-        _scenario_label(row): int(row["WaScnID"]) for _, row in scenarios_df.iterrows()
-    }
-    default_scenario = next(iter(scenario_options.values())) if scenario_options else None
 
     sector_values = sorted(impact_chains_df["Sector"].dropna().astype(str).unique().tolist())
     default_sector = sector_values[0] if sector_values else None
 
     basin_select = pn.widgets.Select(name="Basin", options=basin_options, value=default_basin)
-    scenario_select = pn.widgets.Select(
-        name="WaterALLOC Scenario",
-        options=scenario_options,
-        value=default_scenario,
-    )
     sector_select = pn.widgets.Select(name="Sector", options=sector_values, value=default_sector)
     ic_select = pn.widgets.Select(name="Impact Chain", options={}, value=None)
     basemap_select = pn.widgets.Select(
@@ -164,55 +188,72 @@ def main():
 
     @pn.depends(
         basin_select.param.value,
-        scenario_select.param.value,
         sector_select.param.value,
         ic_select.param.value,
         basemap_select.param.value,
     )
-    def _build_outputs(_basin, _scenario, _sector, _ic, _basemap):
+    def _build_outputs(_basin, _sector, _ic, _basemap):
         basin = basin_select.value
-        wascn_id = scenario_select.value
         ic_id = ic_select.value
         basemap = basemap_select.value
 
-        if basin is None or wascn_id is None or ic_id is None:
-            return pn.pane.Alert("Please choose basin, scenario, sector, and impact chain.", alert_type="warning")
+        if basin is None or ic_id is None:
+            return pn.pane.Alert("Please choose basin, sector, and impact chain.", alert_type="warning")
+
+        if missing_scenarios:
+            available_names = ", ".join(sorted(scenarios_df["WaScnName"].astype(str).tolist()))
+            return pn.pane.Alert(
+                "Missing required scenarios: "
+                + ", ".join(missing_scenarios)
+                + ". Available scenarios are: "
+                + available_names,
+                alert_type="danger",
+            )
 
         basin_gdf, _ = _load_basin_geometry(str(basin))
-        baseline_scores_df = _load_baseline_scores_for_basin(int(wascn_id), int(ic_id), str(basin))
+        map_panels = []
+        empty_scenarios = []
 
-        if baseline_scores_df.empty:
+        for scenario_label, wascn_id in fixed_scenarios:
+            baseline_scores_df = _load_baseline_scores_for_basin(int(wascn_id), int(ic_id), str(basin))
+            if baseline_scores_df.empty:
+                empty_scenarios.append(scenario_label)
+                continue
+
+            categorical_map = build_risk_category_map(
+                basin_gdf=basin_gdf,
+                scores_df=baseline_scores_df,
+                selected_comids=None,
+                risk_col="Riesgo",
+                title=scenario_label,
+            )
+            categorical_map = _apply_basemap(categorical_map, basemap)
+            map_panels.append(categorical_map)
+
+        if not map_panels:
             return pn.pane.Alert(
-                "No baseline results found for this basin / scenario / impact chain.",
+                "No baseline results found for the selected basin and impact chain across the fixed scenarios.",
                 alert_type="warning",
             )
 
-        raw_map = build_risk_map(
-            basin_gdf=basin_gdf,
-            risk_df=baseline_scores_df,
-            selected_comids=None,
-            risk_col="Riesgo",
-            title="Raw Risk (Riesgo)",
-        )
-        raw_map = _apply_basemap(raw_map, basemap)
-        categorical_map = build_risk_category_map(
-            basin_gdf=basin_gdf,
-            scores_df=baseline_scores_df,
-            selected_comids=None,
-            risk_col="Riesgo",
-            title="Categorical Risk",
-        )
-        categorical_map = _apply_basemap(categorical_map, basemap)
+        warnings = []
+        if empty_scenarios:
+            warnings.append(
+                pn.pane.Alert(
+                    "No data found for scenarios: " + ", ".join(empty_scenarios),
+                    alert_type="warning",
+                )
+            )
 
         return pn.Column(
             pn.pane.Markdown("### Basin Results Viewer"),
-            pn.Row(raw_map, categorical_map, sizing_mode="stretch_width"),
+            *warnings,
+            pn.Row(*map_panels, sizing_mode="stretch_width"),
             sizing_mode="stretch_both",
         )
 
     controls = pn.Column(
         "## Controls",
-        scenario_select,
         sector_select,
         ic_select,
         basin_select,
